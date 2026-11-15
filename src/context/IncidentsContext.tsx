@@ -1,0 +1,7 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { incidentRepository } from '../services/incidents';
+import type { Incident, IncidentInput, IncidentStatus } from '../types';
+type Context={incidents:Incident[];loading:boolean;error:string|null;create:(i:IncidentInput)=>Promise<Incident>;updateStatus:(id:string,s:IncidentStatus)=>Promise<void>};
+const C=createContext<Context|null>(null);
+export function IncidentsProvider({children}:{children:React.ReactNode}){const [incidents,setIncidents]=useState<Incident[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState<string|null>(null);useEffect(()=>{incidentRepository.list().then(setIncidents).catch(()=>setError('Não foi possível carregar as ocorrências.')).finally(()=>setLoading(false));},[]);const create=useCallback(async(i:IncidentInput)=>{const x=await incidentRepository.create(i);setIncidents(v=>[x,...v]);return x;},[]);const updateStatus=useCallback(async(id:string,s:IncidentStatus)=>{const x=await incidentRepository.updateStatus(id,s,'Administrador demonstrativo');setIncidents(v=>v.map(i=>i.id===id?x:i));},[]);const value=useMemo(()=>({incidents,loading,error,create,updateStatus}),[incidents,loading,error,create,updateStatus]);return <C.Provider value={value}>{children}</C.Provider>}
+export function useIncidents(){const v=useContext(C);if(!v)throw new Error('IncidentsProvider ausente');return v;}
