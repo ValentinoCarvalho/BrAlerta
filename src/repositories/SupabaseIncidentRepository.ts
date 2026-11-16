@@ -108,7 +108,11 @@ export class SupabaseIncidentRepository implements IncidentRepository {
     const urls = new Map<string, string>();
     if (paths.length) {
       const { data, error } = await this.client.storage.from('incident-photos').createSignedUrls(paths, 3600);
-      if (!error) data?.forEach(item => { if (item.signedUrl) urls.set(item.path, item.signedUrl); });
+      if (!error) {
+        data?.forEach((item) => {
+          if (item.path && item.signedUrl) urls.set(item.path, item.signedUrl);
+        });
+      }
     }
     return rows.map(row => mapIncident(row, row.photo_path ? urls.get(row.photo_path) : undefined));
   }
