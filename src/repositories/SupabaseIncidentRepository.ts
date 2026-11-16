@@ -80,7 +80,8 @@ export class SupabaseIncidentRepository implements IncidentRepository {
     }
   }
 
-  async updateStatus(id: string, status: IncidentStatus, _changedBy: string): Promise<Incident> {
+  async updateStatus(id: string, status: IncidentStatus, changedBy: string): Promise<Incident> {
+    void changedBy; // A RPC identifica o responsável por meio de auth.uid().
     await this.requireUser();
     const { error } = await this.client.rpc('update_incident_status', {
       p_incident_id: id,
