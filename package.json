@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:db": "supabase test db",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
     "maplibre-gl": "latest",
@@ -25,8 +30,14 @@
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
+    "@testing-library/user-event": "latest",
+    "jsdom": "latest",
+    "supabase": "^3.1.0",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "vitest": "latest"
   }
 }
