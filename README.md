@@ -10,7 +10,7 @@ MVP acadêmico de uma plataforma CivicTech para registrar e acompanhar ocorrênc
 - Cadastro completo por clique no mapa, validação, foto local opcional e persistência em `localStorage`.
 - Página “Minhas ocorrências” e painel administrativo com atualização persistente de status.
 - Layout responsivo, foco acessível e mensagens de loading, erro, vazio e sucesso contextual.
-- Contrato `IncidentRepository`, implementação mock e migração preparada para Supabase.
+- Contrato `IncidentRepository`, implementações mock/Supabase e migração preparada para o banco remoto.
 
 ## Executar
 
@@ -38,7 +38,19 @@ npm run preview
 - `src/data`: seed inicial gravado apenas quando não há dados no navegador.
 - `supabase/migrations`: tabelas, validações, índices e RLS sem políticas públicas permissivas.
 
-O perfil “Cidadão” e o perfil administrativo são apenas modos demonstrativos; não representam autenticação ou autorização real. Para usar Supabase, implemente `SupabaseIncidentRepository`, configure as variáveis de `.env.example`, autenticação e políticas RLS por usuário/papel antes de disponibilizar escrita.
+O perfil “Cidadão” e o perfil administrativo são apenas modos demonstrativos; não representam autenticação ou autorização real. O `SupabaseIncidentRepository` já implementa consulta, cadastro, objetos da cena e atualização de status/histórico, mas permanece desativado por padrão. Para ativá-lo, aplique as migrações, configure Auth e políticas RLS, preencha as variáveis de `.env.example` e defina `VITE_USE_SUPABASE=true`.
+
+### Autenticação e papéis
+
+Com o Supabase ativado, todas as páginas da aplicação exigem login. Novas contas recebem automaticamente um perfil `CITIZEN`; somente perfis `ADMIN` acessam `/admin` e podem atualizar status. A promoção nunca é feita pelo frontend. Depois que o usuário administrador criar e confirmar sua conta, execute no SQL Editor do Supabase:
+
+```sql
+update public.profiles
+set role = 'ADMIN', updated_at = now()
+where email = 'email-do-administrador@exemplo.com';
+```
+
+As políticas RLS continuam sendo a fonte de autorização mesmo que alguém tente acessar a API sem usar a interface.
 
 ## Limitações e próximos passos
 
