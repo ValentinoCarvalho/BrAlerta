@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { DEMO_USER_ID } from '../data/seed';
 import { getSupabaseClient } from '../lib/supabase';
 import { isSupabaseEnabled } from '../lib/runtime';
 
@@ -22,8 +21,20 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const mockUser: AuthUser = { id: DEMO_USER_ID, email: 'cidadao@demo.br' };
-const mockProfile: UserProfile = { id: DEMO_USER_ID, email: 'cidadao@demo.br', fullName: 'Cidadão demonstrativo', role: 'CITIZEN' };
+
+function createDemoIdentity(email: string, fullName?: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const profile: UserProfile = {
+    id: `demo-${normalizedEmail}`,
+    email: normalizedEmail,
+    fullName: fullName?.trim() || normalizedEmail.split('@')[0] || 'Cidadão demonstrativo',
+    role: 'CITIZEN',
+  };
+  return {
+    user: { id: profile.id, email: normalizedEmail },
+    profile,
+  };
+}
 
 function authError(message: string): string {
   if (message.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
@@ -33,8 +44,8 @@ function authError(message: string): string {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(isSupabaseEnabled ? null : mockUser);
-  const [profile, setProfile] = useState<UserProfile | null>(isSupabaseEnabled ? null : mockProfile);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(isSupabaseEnabled);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +95,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     setError(null);
     setLoading(true);
+    if (!isSupabaseEnabled) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail.includes('@') || !password) {
+        const message = 'Informe um e-mail válido e uma senha para o acesso demonstrativo.';
+        setError(message);
+        setLoading(false);
+        throw new Error(message);
+      }
+
+      const identity = createDemoIdentity(normalizedEmail);
+      setUser(identity.user);
+      setProfile(identity.profile);
+      setLoading(false);
+      return;
+    }
+
     const { error: signInError } = await getSupabaseClient().auth.signInWithPassword({ email, password });
     if (signInError) {
       const message = authError(signInError.message);
@@ -96,6 +123,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = useCallback(async (fullName: string, email: string, password: string): Promise<SignUpResult> => {
     setError(null);
     setLoading(true);
+    if (!isSupabaseEnabled) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (fullName.trim().length < 2 || !normalizedEmail.includes('@') || password.length < 8) {
+        const message = 'Informe nome, e-mail válido e senha com pelo menos 8 caracteres.';
+        setError(message);
+        setLoading(false);
+        throw new Error(message);
+      }
+
+      const identity = createDemoIdentity(normalizedEmail, fullName);
+      setUser(identity.user);
+      setProfile(identity.profile);
+      setLoading(false);
+      return { needsEmailConfirmation: false };
+    }
+
     const { data, error: signUpError } = await getSupabaseClient().auth.signUp({
       email,
       password,
@@ -112,6 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null);
+    if (!isSupabaseEnabled) {
+      setUser(null);
+      setProfile(null);
+      return;
+    }
+
     const { error: signOutError } = await getSupabaseClient().auth.signOut();
     if (signOutError) {
       const message = authError(signOutError.message);

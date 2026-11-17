@@ -1,2 +1,180 @@
-import { Camera, Check, MapPin, X } from 'lucide-react'; import { useState } from 'react'; import type { IncidentCategory, IncidentInput } from '../../types';
-export function IncidentForm({coords,onCancel,onSubmit}:{coords:{lat:number;lng:number}|null;onCancel:()=>void;onSubmit:(v:IncidentInput)=>Promise<void>}){const [category,setCategory]=useState<IncidentCategory>('STREETLIGHT');const [title,setTitle]=useState('');const [description,setDescription]=useState('');const [photo,setPhoto]=useState<string>();const [photoFile,setPhotoFile]=useState<File>();const [saving,setSaving]=useState(false);const [error,setError]=useState(''); async function submit(e:React.FormEvent){e.preventDefault();if(!coords){setError('Clique no mapa para indicar o local.');return}if(!title.trim()||!description.trim()){setError('Preencha título e descrição.');return}setSaving(true);setError('');try{await onSubmit({category,title:title.trim(),description:description.trim(),latitude:coords.lat,longitude:coords.lng,address:'Recreio dos Bandeirantes, Rio de Janeiro — RJ',photoUrl:photo,photoFile});}catch(e){setError(e instanceof Error?e.message:'Não foi possível publicar a ocorrência.')}finally{setSaving(false)}} return <aside className="form-panel"><button className="close" onClick={onCancel} aria-label="Cancelar registro"><X/></button><span className="eyebrow">NOVA OCORRÊNCIA</span><h2>Registrar ocorrência</h2><p>Selecione a categoria, marque o local no mapa e conte o que aconteceu.</p><form onSubmit={submit}><fieldset><legend>Categoria</legend><div className="category-options"><button type="button" className={category==='STREETLIGHT'?'selected':''} onClick={()=>setCategory('STREETLIGHT')}><span>💡</span><b>Poste apagado</b>{category==='STREETLIGHT'&&<Check/>}</button><button type="button" className={category==='POTHOLE'?'selected':''} onClick={()=>setCategory('POTHOLE')}><span>⚠️</span><b>Buraco na rua</b>{category==='POTHOLE'&&<Check/>}</button></div></fieldset><div className={`location-box ${coords?'done':''}`}><MapPin/><div><b>{coords?'Local selecionado':'Indique o local no mapa'}</b><span>{coords?`${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`:'Clique no ponto exato do problema'}</span></div></div><label>Título<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Ex.: Poste apagado próximo à praça" maxLength={80}/></label><label>Descrição<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Descreva o problema com mais detalhes..." maxLength={300}/><small>{description.length}/300</small></label><label className="photo-input"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;const allowed=['image/jpeg','image/png','image/webp'];if(!allowed.includes(f.type)){setError('Use uma imagem JPG, PNG ou WebP.');return}if(f.size>5*1024*1024){setError('Escolha uma imagem de até 5 MB.');return}setError('');setPhotoFile(f);const r=new FileReader();r.onload=()=>setPhoto(String(r.result));r.readAsDataURL(f);}}/><Camera/><b>{photo?'Foto pronta':'Adicionar foto'}</b><span>JPG, PNG ou WebP · até 5 MB</span></label>{photo&&<img className="photo-preview" src={photo} alt="Prévia selecionada"/>}{error&&<div className="form-error">{error}</div>}<button className="primary" disabled={saving}>{saving?'Publicando...':'Publicar ocorrência'} <span>→</span></button></form></aside>}
+import { Camera, Check, MapPin, X } from 'lucide-react';
+import { useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import type { IncidentCategory, IncidentInput } from '../../types';
+
+type Coordinates = { lat: number; lng: number };
+
+type IncidentFormProps = {
+  coords: Coordinates | null;
+  onCancel: () => void;
+  onSubmit: (value: IncidentInput) => Promise<void>;
+};
+
+const photoTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const maxPhotoSize = 5 * 1024 * 1024;
+
+export function IncidentForm({ coords, onCancel, onSubmit }: IncidentFormProps) {
+  const [category, setCategory] = useState<IncidentCategory>('STREETLIGHT');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [photo, setPhoto] = useState<string>();
+  const [photoFile, setPhotoFile] = useState<File>();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    if (!photoTypes.includes(file.type)) {
+      setError('Use uma imagem JPG, PNG ou WebP.');
+      return;
+    }
+
+    if (file.size > maxPhotoSize) {
+      setError('Escolha uma imagem de até 5 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        setError('Não foi possível carregar a imagem selecionada.');
+        return;
+      }
+
+      setPhotoFile(file);
+      setPhoto(reader.result);
+      setError('');
+    };
+    reader.onerror = () => setError('Não foi possível ler a imagem selecionada.');
+    reader.readAsDataURL(file);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!coords) {
+      setError('Clique no mapa para indicar o local.');
+      return;
+    }
+
+    if (!title.trim() || !description.trim()) {
+      setError('Preencha título e descrição.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      await onSubmit({
+        category,
+        title: title.trim(),
+        description: description.trim(),
+        latitude: coords.lat,
+        longitude: coords.lng,
+        photoUrl: photo,
+        photoFile,
+      });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível publicar a ocorrência.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <aside className="form-panel">
+      <button className="close" onClick={onCancel} aria-label="Cancelar registro">
+        <X />
+      </button>
+      <span className="eyebrow">NOVA OCORRÊNCIA</span>
+      <h2>Registrar ocorrência</h2>
+      <p>Selecione a categoria, marque o local no mapa e conte o que aconteceu.</p>
+
+      <form onSubmit={submit}>
+        <fieldset>
+          <legend>Categoria</legend>
+          <div className="category-options">
+            <button
+              type="button"
+              className={category === 'STREETLIGHT' ? 'selected' : ''}
+              aria-pressed={category === 'STREETLIGHT'}
+              onClick={() => setCategory('STREETLIGHT')}
+            >
+              <span aria-hidden="true">💡</span>
+              <b>Poste apagado</b>
+              {category === 'STREETLIGHT' && <Check aria-hidden="true" />}
+            </button>
+            <button
+              type="button"
+              className={category === 'POTHOLE' ? 'selected' : ''}
+              aria-pressed={category === 'POTHOLE'}
+              onClick={() => setCategory('POTHOLE')}
+            >
+              <span aria-hidden="true">⚠️</span>
+              <b>Buraco na rua</b>
+              {category === 'POTHOLE' && <Check aria-hidden="true" />}
+            </button>
+          </div>
+        </fieldset>
+
+        <div className={`location-box ${coords ? 'done' : ''}`}>
+          <MapPin aria-hidden="true" />
+          <div>
+            <b>{coords ? 'Local selecionado' : 'Indique o local no mapa'}</b>
+            <span>
+              {coords
+                ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
+                : 'Clique no ponto exato do problema'}
+            </span>
+          </div>
+        </div>
+
+        <label>
+          Título
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Ex.: Poste apagado próximo à praça"
+            maxLength={80}
+          />
+        </label>
+
+        <label>
+          Descrição
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Descreva o problema com mais detalhes..."
+            maxLength={300}
+          />
+          <small>{description.length}/300</small>
+        </label>
+
+        <label className="photo-input">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={selectPhoto}
+          />
+          <Camera aria-hidden="true" />
+          <b>{photo ? 'Foto pronta' : 'Adicionar foto'}</b>
+          <span>JPG, PNG ou WebP · até 5 MB</span>
+        </label>
+
+        {photo && <img className="photo-preview" src={photo} alt="Prévia selecionada" />}
+        {error && <div className="form-error" role="alert">{error}</div>}
+
+        <button className="primary" disabled={saving}>
+          {saving ? 'Publicando...' : 'Publicar ocorrência'} <span aria-hidden="true">→</span>
+        </button>
+      </form>
+    </aside>
+  );
+}

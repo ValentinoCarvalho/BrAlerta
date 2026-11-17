@@ -1,7 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IncidentHistoryRow, IncidentWithHistoryRow } from '../lib/database.types';
 import { getSupabaseClient } from '../lib/supabase';
-import type { Incident, IncidentHistory, IncidentInput, IncidentStatus } from '../types';
+import type {
+  Incident,
+  IncidentHistory,
+  IncidentInput,
+  IncidentStatus,
+  IncidentUpdateInput,
+} from '../types';
 import type { IncidentRepository } from './IncidentRepository';
 
 export function mapHistory(row: IncidentHistoryRow): IncidentHistory {
@@ -12,6 +18,7 @@ export function mapHistory(row: IncidentHistoryRow): IncidentHistory {
     newStatus: row.new_status,
     changedBy: row.changed_by ?? 'Sistema',
     changedAt: row.changed_at,
+    eventType: row.event_type,
   };
 }
 
@@ -91,6 +98,33 @@ export class SupabaseIncidentRepository implements IncidentRepository {
     return this.getById(id);
   }
 
+  async updateOwnPending(
+    id: string,
+    input: IncidentUpdateInput,
+    ownerId: string,
+  ): Promise<Incident> {
+    void ownerId; // A RPC valida a propriedade usando auth.uid().
+    await this.requireUser();
+    const { error } = await this.client.rpc('update_own_pending_incident', {
+      p_incident_id: id,
+      p_category: input.category,
+      p_title: input.title,
+      p_description: input.description,
+    });
+    if (error) throw errorMessage('editar a ocorrência', error.message);
+    return this.getById(id);
+  }
+
+  async cancelOwnPending(id: string, ownerId: string): Promise<Incident> {
+    void ownerId; // A RPC valida a propriedade usando auth.uid().
+    await this.requireUser();
+    const { error } = await this.client.rpc('cancel_own_pending_incident', {
+      p_incident_id: id,
+    });
+    if (error) throw errorMessage('cancelar a ocorrência', error.message);
+    return this.getById(id);
+  }
+
   private async getById(id: string): Promise<Incident> {
     const { data, error } = await this.client
       .from('incidents')
@@ -108,11 +142,12 @@ export class SupabaseIncidentRepository implements IncidentRepository {
     const urls = new Map<string, string>();
     if (paths.length) {
       const { data, error } = await this.client.storage.from('incident-photos').createSignedUrls(paths, 3600);
-      if (!error) {
-        data?.forEach((item) => {
-          if (item.path && item.signedUrl) urls.set(item.path, item.signedUrl);
-        });
+      if (error) {
+        throw errorMessage('carregar as fotos das ocorrências', error.message);
       }
+      data?.forEach((item) => {
+        if (item.path && item.signedUrl) urls.set(item.path, item.signedUrl);
+      });
     }
     return rows.map(row => mapIncident(row, row.photo_path ? urls.get(row.photo_path) : undefined));
   }

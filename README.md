@@ -9,6 +9,9 @@ MVP acadêmico de uma plataforma CivicTech para registrar e acompanhar ocorrênc
 - 10 ocorrências fictícias georreferenciadas, filtros e detalhes com histórico.
 - Cadastro completo por clique no mapa, validação, foto local opcional e persistência em `localStorage`.
 - Página “Minhas ocorrências” e painel administrativo com atualização persistente de status.
+- Central de notificações com novos registros, edições e mudanças de status; mensagens abrem a ocorrência no mapa e podem ser marcadas como lidas.
+- Em “Minhas ocorrências”, o cidadão pode editar categoria, título e descrição ou cancelar um registro pendente; localização e foto permanecem inalteradas.
+- Notificações lidas são salvas por usuário (localmente no modo demonstrativo e no Supabase no modo conectado).
 - Layout responsivo, foco acessível e mensagens de loading, erro, vazio e sucesso contextual.
 - Contrato `IncidentRepository`, implementações mock/Supabase e migração preparada para o banco remoto.
 
@@ -29,6 +32,13 @@ npm run lint
 npm run preview
 ```
 
+## Estrutura do frontend
+
+- Vite com React e TypeScript; a configuração de compilação também verifica os tipos.
+- Tailwind CSS v4 integrado pelo plugin do Vite. As utilities podem ser usadas incrementalmente nos componentes.
+- Os estilos existentes em `src/styles.css` foram mantidos; o reset global do Tailwind não é carregado para evitar mudanças visuais involuntárias.
+- As rotas ficam em `src/App.tsx`, com `react-router-dom`; `src/components/layout` compartilha o layout e `src/pages` contém as telas.
+
 ## Arquitetura
 
 - `src/components`: layout, mapa, formulários, detalhes e indicadores reutilizáveis.
@@ -38,7 +48,24 @@ npm run preview
 - `src/data`: seed inicial gravado apenas quando não há dados no navegador.
 - `supabase/migrations`: tabelas, validações, índices e RLS sem políticas públicas permissivas.
 
-O perfil “Cidadão” e o perfil administrativo são apenas modos demonstrativos; não representam autenticação ou autorização real. O `SupabaseIncidentRepository` já implementa consulta, cadastro, objetos da cena e atualização de status/histórico, mas permanece desativado por padrão. Para ativá-lo, aplique as migrações, configure Auth e políticas RLS, preencha as variáveis de `.env.example` e defina `VITE_USE_SUPABASE=true`.
+Sem `VITE_USE_SUPABASE=true`, login e cadastro funcionam em modo demonstrativo local: o login aceita um e-mail válido e qualquer senha não vazia, não salva a senha e cria apenas perfis de cidadão. Cada e-mail identifica seu próprio estado demonstrativo, que não autentica no servidor. A opção “Entrar com outro usuário” no menu do perfil permite voltar ao login. No Supabase, RPCs protegidas permitem editar ou cancelar somente ocorrências pendentes do próprio cidadão; ambas preservam o histórico. As leituras das notificações também são vinculadas ao usuário.
+
+### Conectar a um projeto Supabase
+
+1. Aplique os arquivos de `supabase/migrations` em ordem crescente no SQL Editor do projeto.
+2. Copie `.env.example` para `.env.local` e informe a URL do projeto e a publishable key:
+
+   ```env
+   VITE_USE_SUPABASE=true
+   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+   VITE_ENABLE_REALTIME=true
+   ```
+
+3. Habilite autenticação por e-mail/senha e reinicie o servidor Vite.
+4. Para atualizações em tempo real, habilite `incidents`, `incident_history` e `notification_reads` na publicação `supabase_realtime`.
+
+`.env.local` está no `.gitignore`. Não use nem compartilhe uma `service_role` key no frontend. Os testes automatizados simulam as respostas do Supabase; validar o projeto remoto exige credenciais configuradas localmente.
 
 ### Autenticação e papéis
 

@@ -1,5 +1,5 @@
 import type { Incident, IncidentCategory, IncidentStatus } from '../types';
-export const DEMO_USER_ID = 'demo-cidadao';
+export const DEMO_USER_ID = 'demo-demo@example.com';
 const entries: Array<[IncidentCategory,string,string,number,number,IncidentStatus,string]> = [
  ['STREETLIGHT','Poste apagado próximo à praça','Trecho com pouca iluminação durante a noite.',-23.0244,-43.4642,'PENDING',DEMO_USER_ID],
  ['POTHOLE','Buraco próximo ao cruzamento','Desnível no asfalto exige atenção dos motoristas.',-23.0260,-43.4662,'IN_PROGRESS',DEMO_USER_ID],
@@ -12,4 +12,4 @@ const entries: Array<[IncidentCategory,string,string,number,number,IncidentStatu
  ['STREETLIGHT','Ponto escuro próximo ao parque','Poste sem funcionamento aparente.',-23.0217,-43.4598,'RESOLVED','morador-06'],
  ['POTHOLE','Asfalto cedendo próximo à curva','Área pequena, mas com risco para bicicletas.',-23.0248,-43.4690,'IN_PROGRESS',DEMO_USER_ID]
 ];
-export const seedIncidents: Incident[] = entries.map((e,i) => { const createdAt = new Date(Date.now()-(i+1)*86400000).toISOString(); const id=`BRA-${String(i+1).padStart(4,'0')}`; return { id,userId:e[6],category:e[0],title:e[1],description:e[2],latitude:e[3],longitude:e[4],status:e[5],address:'Recreio dos Bandeirantes, Rio de Janeiro — RJ',createdAt,updatedAt:createdAt,history:[{id:`hist-${i}`,incidentId:id,newStatus:e[5],changedBy:'Sistema demonstrativo',changedAt:createdAt}]}; });
+export const seedIncidents: Incident[] = entries.map((e,i) => { const createdAt = new Date(Date.now()-(i+1)*86400000).toISOString(); const id=`BRA-${String(i+1).padStart(4,'0')}`; return { id,userId:e[6],category:e[0],title:e[1],description:e[2],latitude:e[3],longitude:e[4],status:e[5],address:'Recreio dos Bandeirantes, Rio de Janeiro — RJ',createdAt,updatedAt:createdAt,history:[{id:`hist-${i}`,incidentId:id,newStatus:e[5],changedBy:'Sistema demonstrativo',changedAt:createdAt,eventType:'CREATED'}]}; });

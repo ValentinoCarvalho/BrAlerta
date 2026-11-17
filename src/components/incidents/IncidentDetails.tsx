@@ -1,3 +1,158 @@
-import { Calendar, Clock3, MapPin, X } from 'lucide-react'; import type { Incident } from '../../types'; import { StatusBadge } from './StatusBadge';
-const cat={STREETLIGHT:['Poste apagado','💡'],POTHOLE:['Buraco na rua','⚠️']} as const;
-export function IncidentDetails({incident,onClose,onMap}:{incident:Incident;onClose:()=>void;onMap?:()=>void}){return <aside className="detail-panel"><button className="close" onClick={onClose} aria-label="Fechar detalhes"><X/></button><span className="eyebrow">DETALHES DA OCORRÊNCIA</span><div className="detail-icon">{cat[incident.category][1]}</div><span className="category">{cat[incident.category][0]}</span><h2>{incident.title}</h2><StatusBadge status={incident.status}/>{incident.photoUrl&&<img className="incident-photo" src={incident.photoUrl} alt={`Foto da ocorrência: ${incident.title}`}/>}<p className="description">{incident.description}</p><div className="meta-row"><MapPin/><div><small>Localização aproximada</small><b>{incident.address}</b><span>{incident.latitude.toFixed(5)}, {incident.longitude.toFixed(5)}</span></div></div><div className="meta-grid"><div><Calendar/><small>Registrada em</small><b>{new Date(incident.createdAt).toLocaleDateString('pt-BR')}</b></div><div><Clock3/><small>Identificador</small><b>{incident.id}</b></div></div><h3>Histórico</h3><div className="timeline">{[...incident.history].reverse().map(h=><div key={h.id}><i/><div><b>{h.previousStatus?'Status atualizado':'Ocorrência registrada'}</b><span>{new Date(h.changedAt).toLocaleString('pt-BR')} · {h.changedBy}</span></div></div>)}</div>{onMap&&<button className="primary" onClick={onMap}>Ver no mapa <span>→</span></button>}</aside>}
+import {
+  ChevronRight,
+  Lightbulb,
+  Map as MapIcon,
+  MapPin,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
+import type { Incident, IncidentStatus } from '../../types';
+
+const categories = {
+  STREETLIGHT: { label: 'Poste apagado', Icon: Lightbulb },
+  POTHOLE: { label: 'Buraco na rua', Icon: TriangleAlert },
+} as const;
+
+const statusLabels: Record<IncidentStatus, string> = {
+  PENDING: 'Pendente',
+  IN_PROGRESS: 'Em análise',
+  RESOLVED: 'Resolvido',
+  CANCELLED: 'Cancelada',
+};
+
+const statusSteps: IncidentStatus[] = ['PENDING', 'IN_PROGRESS', 'RESOLVED'];
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function IncidentDetails({
+  incident,
+  onClose,
+  onMap,
+}: {
+  incident: Incident;
+  onClose: () => void;
+  onMap?: () => void;
+}) {
+  const { Icon: CategoryIcon, label: categoryLabel } = categories[incident.category];
+  const isCancelled = incident.status === 'CANCELLED';
+  const currentStep = statusSteps.indexOf(incident.status);
+  const inProgressAt = incident.history.find(
+    (item) => item.newStatus === 'IN_PROGRESS',
+  )?.changedAt;
+  const resolvedAt = incident.history.find(
+    (item) => item.newStatus === 'RESOLVED',
+  )?.changedAt;
+
+  const steps = isCancelled
+    ? [
+      { label: 'Ocorrência registrada', changedAt: incident.createdAt },
+      {
+        label: 'Cancelada',
+        changedAt: incident.history.find(
+          (item) => item.eventType === 'CANCELLED' || item.newStatus === 'CANCELLED',
+        )?.changedAt,
+      },
+    ]
+    : [
+      { label: 'Ocorrência registrada', changedAt: incident.createdAt },
+      { label: 'Em análise', changedAt: inProgressAt },
+      { label: 'Resolvido', changedAt: resolvedAt },
+    ];
+
+  return (
+    <aside className="detail-panel">
+      <div className={`detail-cover ${incident.photoUrl ? '' : 'detail-cover-empty'}`}>
+        {incident.photoUrl ? (
+          <img
+            className="detail-cover-image"
+            src={incident.photoUrl}
+            alt={`Foto da ocorrência: ${incident.title}`}
+          />
+        ) : (
+          <div className="detail-cover-placeholder" aria-label="Ocorrência sem foto">
+            <CategoryIcon aria-hidden="true" />
+            <span>Foto não adicionada</span>
+          </div>
+        )}
+        <button className="detail-close" onClick={onClose} aria-label="Fechar detalhes">
+          <X />
+        </button>
+        <span className="detail-category-pill">
+          <CategoryIcon aria-hidden="true" />
+          {categoryLabel}
+        </span>
+      </div>
+
+      <div className="detail-content">
+        <h2 className="detail-title">{incident.title}</h2>
+        <p className="detail-description">{incident.description}</p>
+
+        <div className="detail-location">
+          <MapPin aria-hidden="true" />
+          <span>
+            {incident.address ||
+              `Coordenadas: ${incident.latitude.toFixed(5)}, ${incident.longitude.toFixed(5)}`}
+          </span>
+        </div>
+
+        <dl className="detail-facts">
+          <div className="detail-fact">
+            <dt>Status</dt>
+            <dd><span className={`detail-status status-${incident.status.toLowerCase()}`}>{statusLabels[incident.status]}</span></dd>
+          </div>
+          <div className="detail-fact">
+            <dt>Data da ocorrência</dt>
+            <dd>{formatDateTime(incident.createdAt)}</dd>
+          </div>
+          <div className="detail-fact">
+            <dt>Categoria</dt>
+            <dd className="detail-fact-category"><CategoryIcon aria-hidden="true" />{categoryLabel}</dd>
+          </div>
+        </dl>
+
+        {onMap && (
+          <button className="detail-map-button" onClick={onMap}>
+            <MapIcon aria-hidden="true" />
+            <span>Ver no mapa</span>
+            <ChevronRight aria-hidden="true" />
+          </button>
+        )}
+
+        <section className="detail-history" aria-labelledby="incident-history-title">
+          <h3 id="incident-history-title">Histórico</h3>
+          <div className="history-steps">
+            {steps.map((step, index) => {
+              const isComplete = isCancelled ? index === 0 : index < currentStep;
+              const isCurrent = isCancelled ? index === 1 : index === currentStep;
+              const changedAt = index === 0 ? incident.createdAt : step.changedAt;
+
+              return (
+                <div
+                  className={`history-step ${isComplete ? 'complete' : ''} ${isCurrent ? 'current' : ''}`}
+                  key={step.label}
+                >
+                  <i aria-hidden="true" />
+                  <div>
+                    <b>{step.label}</b>
+                    <span>
+                      {isCancelled || index <= currentStep ? formatDateTime(changedAt) : '—'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </aside>
+  );
+}
