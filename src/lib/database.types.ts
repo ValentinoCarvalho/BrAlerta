@@ -1,4 +1,4 @@
-import type { IncidentCategory, IncidentStatus } from '../types';
+import type { IncidentCategory, IncidentEventType, IncidentStatus } from '../types';
 
 export interface IncidentRow {
   id: string;
@@ -23,8 +23,15 @@ export interface IncidentHistoryRow {
   new_status: IncidentStatus;
   changed_by: string | null;
   changed_at: string;
+  event_type: IncidentEventType;
 }
 
 export type IncidentWithHistoryRow = IncidentRow & {
   incident_history: IncidentHistoryRow[] | null;
 };
+
+export interface NotificationReadRow {
+  user_id: string;
+  notification_id: string;
+  read_at: string;
+}
